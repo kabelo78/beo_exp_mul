@@ -1,34 +1,51 @@
 blueprint:
-  name: B&O Mozart Expand - Vælg Peer JIDs
+  name: B&O Mozart Expand – Slave udvalgt som Entity
   description: >
-    Denne automation udvider en B&O Mozart master-enhed med de JIDs,
-    du vælger manuelt. Masteren viser en liste af peers (JIDs) under dens 'peers'-attribut.
-    Da Home Assistants blueprint-system ikke understøtter dynamisk genererede dropdowns,
-    skal du kopiere den ønskede JID manuelt.
+    Når master-enheden skifter til en bestemt tilstand (fx "playing"),
+    udtrækkes slave-enhedens JID automatisk fra dens "self"-attribut.
+    Masteren expanderes herefter med denne JID.
   domain: automation
   input:
     master_device:
       name: Master Device
-      description: "Vælg den B&O Mozart-enhed, der skal expanderes."
+      description: "Vælg den B&O Mozart master-enhed, der skal expanderes."
       selector:
         entity:
           domain: media_player
           integration: bang_olufsen
-    peer_jids:
-      name: Peer JIDs
+    slave_device:
+      name: Slave Device
       description: >
-        Angiv de JIDs, der skal tilføjes til masteren. Disse JIDs findes under masterens
-        'peers'-attribut. Kopiér den ønskede JID (eller flere) manuelt.
+        Vælg den B&O Mozart slave-enhed, hvis JID (fundet under 'self')
+        skal udtrækkes automatisk.
+      selector:
+        entity:
+          domain: media_player
+          integration: bang_olufsen
+    trigger_state:
+      name: Trigger State
+      description: >
+        Den tilstand, som master-enheden skal skifte til for at udløse expansion.
+        Eksempel: "playing"
+      default: "playing"
       selector:
         text:
-          multiple: true
 trigger:
   - platform: state
     entity_id: !input master_device
-    to: "playing"
+    to: !input trigger_state
 action:
+  # Sæt slave_device ind i en variabel, så den er tilgængelig i templaten
+  - variables:
+      slave: !input slave_device
   - service: bang_olufsen.beolink_expand
     target:
       entity_id: !input master_device
-    data:
-      beolink_jids: !input peer_jids
+    data_template:
+      beolink_jids: >
+        {%- set attr = state_attr(slave, 'self') -%}
+        {%- if attr -%}
+          {{ attr.values() | list }}
+        {%- else -%}
+          []
+        {%- endif -%}
