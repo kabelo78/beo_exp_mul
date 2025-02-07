@@ -96,8 +96,8 @@ action:
           - service: bang_olufsen.beolink_expand
             target:
               entity_id: !input master_device
-            data:
-              beolink_jids: !var computed_slave_jids
+            data_template:
+              beolink_jids: "{{ computed_slave_jids }}"
       # Case 2: Volumen-sync – hvis volume_sync_trigger udløses, sync_volume er true og betingelser er opfyldt.
       - conditions:
           - condition: template
