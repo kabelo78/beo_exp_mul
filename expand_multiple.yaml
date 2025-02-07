@@ -1,1 +1,31 @@
-
+blueprint:
+  name: "Extract Master JID from self"
+  description: >
+    Denne automation udtrækker JID'en fra master-enhedens "self"-attribut
+    og logger den til systemloggen. Udtrækningen sker, når master-enheden går til tilstanden "playing".
+  domain: automation
+  input:
+    master_device:
+      name: Master Device
+      description: "Vælg den B&O Mozart master-enhed, der indeholder 'self'-attributten."
+      selector:
+        entity:
+          domain: media_player
+          integration: bang_olufsen
+trigger:
+  - platform: state
+    entity_id: !input master_device
+    to: "playing"
+action:
+  - variables:
+      master: !input master_device
+  - service: system_log.write
+    data:
+      message: >
+        {%- set self_attr = state_attr(master, 'self') or {} -%}
+        {%- if self_attr -%}
+          Extracted JID(s): {{ self_attr.values() | list }}
+        {%- else -%}
+          No self attribute found.
+        {%- endif -%}
+      level: info
