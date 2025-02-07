@@ -38,13 +38,9 @@ action:
       slave: !input slave_device
       stored_jid: >
         {% set self_attr = state_attr(slave, 'self') %}
-        {% if self_attr %}
-          {{ self_attr.values() | list }}
-        {% else %}
-          []
-        {% endif %}
+        {% if self_attr %}{{ self_attr.values() | list }}{% else %}[]{% endif %}
   - service: bang_olufsen.beolink_expand
     target:
-      entity_id: !var master
+      entity_id: "{{ master }}"
     data_template:
-      beolink_jids: !var stored_jid
+      beolink_jids: "{{ stored_jid }}"
