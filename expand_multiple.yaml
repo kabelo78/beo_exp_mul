@@ -1,9 +1,9 @@
 blueprint:
-  name: B&O Mozart Expand – Slave JID fra Slave Device
+  name: B&O Mozart Expand – Gem JID i variabel
   description: >
     Når master-enheden skifter til en bestemt tilstand (f.eks. "playing"),
-    udtrækkes JID'en fra slave-enhedens 'self'-attribut, og master-enheden expanderes
-    med denne JID.
+    udtrækkes JID'en fra slave-enhedens 'self'-attribut og gemmes i en variabel.
+    Herefter expanderes master-enheden med denne JID.
   domain: automation
   input:
     master_device:
@@ -16,8 +16,7 @@ blueprint:
     slave_device:
       name: Slave Device
       description: >
-        Vælg den B&O Mozart-enhed, hvorfra JID'en hentes. Blueprintet udtrækker JID'en
-        fra enhedens 'self'-attribut (forventes at være et dictionary).
+        Vælg den B&O Mozart-enhed, hvis JID (fundet under 'self') skal hentes og gemmes.
       selector:
         entity:
           domain: media_player
@@ -34,18 +33,18 @@ trigger:
     entity_id: !input master_device
     to: !input trigger_state
 action:
-  # Overfør input til lokale variabler, så de er tilgængelige i templaten.
   - variables:
       master: !input master_device
       slave: !input slave_device
-  - service: bang_olufsen.beolink_expand
-    target:
-      entity_id: "{{ master }}"
-    data_template:
-      beolink_jids: >
+      stored_jid: >
         {% set self_attr = state_attr(slave, 'self') %}
         {% if self_attr %}
           {{ self_attr.values() | list }}
         {% else %}
           []
         {% endif %}
+  - service: bang_olufsen.beolink_expand
+    target:
+      entity_id: !var master
+    data_template:
+      beolink_jids: !var stored_jid
