@@ -1,13 +1,13 @@
 blueprint:
-  name: "Extract Master JID from self with debugging"
+  name: "Extract Master JID from self with full attributes"
   description: >
-    Denne automation logger hele master-enhedens tilstand og udtrækker JID'en fra dens "self"‑attribut.
-    Hvis attributten ikke findes under "self", forsøges "Self". Se loggen for at kontrollere, om attributten findes.
+    Denne automation logger de fulde attributter for master-enheden og udtrækker JID'en
+    fra dens "self"-attribut, når master-enheden skifter til tilstanden "playing".
   domain: automation
   input:
     master_device:
       name: Master Device
-      description: "Vælg den B&O Mozart master-enhed, som forventes at indeholde JID under 'self'."
+      description: "Vælg den B&O Mozart master-enhed, som forventes at indeholde 'self'-attributten."
       selector:
         entity:
           domain: media_player
@@ -19,20 +19,19 @@ trigger:
 action:
   - variables:
       master: !input master_device
-  # Log hele state-objektet for master-enheden for debugging.
+  # Log alle attributterne for master-enheden.
   - service: system_log.write
     data:
-      message: "Full state for {{ master }}: {{ states(master) }}"
+      message: "Full attributes for {{ master }}: {{ states[master].attributes }}"
       level: info
-  # Forsøg at udtrække JID'en fra enten 'self' eller 'Self'.
+  # Forsøg at udtrække JID'en fra 'self'-attributten.
   - service: system_log.write
     data:
       message: >
-        {%- set self_attr = state_attr(master, 'self') or state_attr(master, 'Self') or {} -%}
-        Extracted self attribute: {{ self_attr }}.
-        {% if self_attr %}
+        {%- set self_attr = states[master].attributes.self or {} -%}
+        {%- if self_attr %}
           Extracted JID(s): {{ self_attr.values() | list }}
-        {% else %}
-          No self attribute found.
-        {% endif %}
+        {%- else %}
+          No 'self' attribute found.
+        {%- endif %}
       level: info
