@@ -1,13 +1,15 @@
 blueprint:
-  name: "Extract Master JID from self with full attributes"
+  name: "Extract Master JID from beolink.self"
   description: >
-    Denne automation logger de fulde attributter for master-enheden og udtrækker JID'en
-    fra dens "self"-attribut, når master-enheden skifter til tilstanden "playing".
+    Denne automation logger alle attributter for master-enheden og udtrækker JID'erne
+    fra dens "beolink → self"-attribut, når enheden går til tilstanden "playing".
   domain: automation
   input:
     master_device:
       name: Master Device
-      description: "Vælg den B&O Mozart master-enhed, som forventes at indeholde 'self'-attributten."
+      description: >
+        Vælg den B&O Mozart master-enhed, som forventes at indeholde JID'en under
+        beolink → self.
       selector:
         entity:
           domain: media_player
@@ -19,19 +21,20 @@ trigger:
 action:
   - variables:
       master: !input master_device
-  # Log alle attributterne for master-enheden.
+  # Log alle attributterne for master-enheden for at se, hvad der er tilgængeligt.
   - service: system_log.write
     data:
       message: "Full attributes for {{ master }}: {{ states[master].attributes }}"
       level: info
-  # Forsøg at udtrække JID'en fra 'self'-attributten.
+  # Udtræk og log JID'erne fra beolink.self
   - service: system_log.write
     data:
       message: >
-        {%- set self_attr = states[master].attributes.self or {} -%}
+        {%- set beolink_attr = states[master].attributes.beolink or {} -%}
+        {%- set self_attr = beolink_attr.self or {} -%}
         {%- if self_attr %}
           Extracted JID(s): {{ self_attr.values() | list }}
         {%- else %}
-          No 'self' attribute found.
+          No 'beolink.self' attribute found.
         {%- endif %}
       level: info
