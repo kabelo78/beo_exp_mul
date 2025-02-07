@@ -36,7 +36,7 @@ trigger:
     entity_id: !input master_device
     to: !input trigger_state
 action:
-  # Overfør blueprint-input til lokale variabler, så de kan bruges i templaten.
+  # Overfør input til lokale variabler, så de er tilgængelige i templaten.
   - variables:
       master: !input master_device
       slaves: !input slave_devices
@@ -45,7 +45,7 @@ action:
     data:
       message: "Master peers: {{ state_attr(master, 'peers') }}"
       level: info
-  # (Valgfrit) Log de valgte slave-enheders friendly names for debugging.
+  # (Valgfrit) Log de valgte slave-enheders friendly_name for debugging.
   - service: system_log.write
     data:
       message: >
@@ -53,10 +53,10 @@ action:
           Slave: {{ state_attr(slave, 'friendly_name') }}
         {%- endfor -%}
       level: info
-  # Kald expand-servicen med JID’erne udtrukket fra masterens peers, baseret på slave-enhedernes friendly_name.
+  # Udfør expand-handlingen: Udtræk JID’erne fra masterens peers baseret på slave-enhedernes friendly_name.
   - service: bang_olufsen.beolink_expand
     target:
-      entity_id: !input master_device
+      entity_id: "{{ master }}"
     data_template:
       beolink_jids: >
         {%- set master_peers = state_attr(master, 'peers') -%}
