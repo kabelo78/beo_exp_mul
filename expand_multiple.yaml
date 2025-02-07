@@ -1,32 +1,32 @@
 blueprint:
-  name: B&O Mozart Expand – Slave udvalgt som Entity
+  name: B&O Mozart Expand with Slave Peer Selection
   description: >
-    Når master-enheden skifter til en bestemt tilstand (fx "playing"),
-    udtrækkes slave-enhedens JID automatisk fra dens "self"-attribut.
-    Masteren expanderes herefter med denne JID.
+    Når master-enheden skifter til den angivne tilstand, udvides den med de slave-enheder,
+    du har valgt. Blueprintet udtrækker automatisk JID’erne fra masterens 'peers'-attribut
+    ved at matche hver slave-enheds 'friendly_name' med en nøgle i 'peers'.
   domain: automation
   input:
     master_device:
       name: Master Device
-      description: "Vælg den B&O Mozart master-enhed, der skal expanderes."
+      description: "Vælg den B&O Mozart-enhed, der skal expanderes."
       selector:
         entity:
           domain: media_player
           integration: bang_olufsen
-    slave_device:
-      name: Slave Device
+    slave_devices:
+      name: Slave Devices
       description: >
-        Vælg den B&O Mozart slave-enhed, hvis JID (fundet under 'self')
-        skal udtrækkes automatisk.
+        Vælg de slave-enheder, der skal inkluderes i masterens gruppe.
+        JID'erne hentes fra masterens 'peers'-attribut, baseret på hver slave-enheds 'friendly_name'.
       selector:
         entity:
           domain: media_player
           integration: bang_olufsen
+          multiple: true
     trigger_state:
       name: Trigger State
       description: >
-        Den tilstand, som master-enheden skal skifte til for at udløse expansion.
-        Eksempel: "playing"
+        Den tilstand, som master-enheden skal skifte til for at udløse expansionen.
       default: "playing"
       selector:
         text:
@@ -35,17 +35,34 @@ trigger:
     entity_id: !input master_device
     to: !input trigger_state
 action:
-  # Sæt slave_device ind i en variabel, så den er tilgængelig i templaten
-  - variables:
-      slave: !input slave_device
+  # (Valgfrit) Log masterens peers for debugging
+  - service: system_log.write
+    data:
+      message: >
+        Master peers: {{ state_attr(master_device, 'peers') }}
+      level: info
+  # (Valgfrit) Log de valgte slave-enheders friendly names for debugging
+  - service: system_log.write
+    data:
+      message: >
+        {%- for slave in slave_devices -%}
+          Slave: {{ state_attr(slave, 'friendly_name') }}
+        {%- endfor -%}
+      level: info
+  # Udfør expand-handlingen – opbyg en liste med JIDs fra masterens peers baseret på slave-enhedernes friendly_name
   - service: bang_olufsen.beolink_expand
     target:
       entity_id: !input master_device
     data_template:
       beolink_jids: >
-        {%- set attr = state_attr(slave, 'self') -%}
-        {%- if attr -%}
-          {{ attr.values() | list }}
-        {%- else -%}
-          []
+        {%- set master_peers = state_attr(master_device, 'peers') -%}
+        {%- set jids = [] -%}
+        {%- if master_peers -%}
+          {%- for slave in slave_devices -%}
+            {%- set friendly = state_attr(slave, 'friendly_name') -%}
+            {%- if friendly and friendly in master_peers -%}
+              {%- set _ = jids.append(master_peers[friendly]) -%}
+            {%- endif -%}
+          {%- endfor -%}
         {%- endif -%}
+        {{ jids }}
