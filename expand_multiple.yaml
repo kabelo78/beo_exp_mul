@@ -1,40 +1,57 @@
 blueprint:
-  name: "Extract Master JID from beolink.self"
+  name: "B&O Mozart Expand med Slave Selection"
   description: >
-    Denne automation logger alle attributter for master-enheden og udtrækker JID'erne
-    fra dens "beolink → self"-attribut, når enheden går til tilstanden "playing".
+    Denne automation expanderer en B&O Mozart master-enhed med de slave-enheder,
+    du vælger fra dropdown. For hver valgt slave udtrækkes JID'en automatisk fra
+    dens "beolink → self"‑attribut, og masteren expanderes med den udtrukne liste af JID'er.
   domain: automation
   input:
     master_device:
-      name: Master Device
-      description: >
-        Vælg den B&O Mozart master-enhed, som forventes at indeholde JID'en under
-        beolink → self.
+      name: Master-enhed
+      description: "Vælg den B&O Mozart master-enhed, der skal expanderes."
       selector:
         entity:
           domain: media_player
           integration: bang_olufsen
+    slave_devices:
+      name: Slave-enheder
+      description: >
+        Vælg en eller flere slave-enheder. Deres JID'er udtrækkes automatisk fra
+        hver enheds "beolink → self"-attribut.
+      selector:
+        entity:
+          domain: media_player
+          integration: bang_olufsen
+          multiple: true
+    trigger_state:
+      name: Trigger-tilstand
+      description: "Den tilstand, som master-enheden skal skifte til for at udløse expand."
+      default: "playing"
+      selector:
+        text:
 trigger:
   - platform: state
     entity_id: !input master_device
-    to: "playing"
+    to: !input trigger_state
 action:
   - variables:
       master: !input master_device
-  # Log alle attributterne for master-enheden for at se, hvad der er tilgængeligt.
-  - service: system_log.write
-    data:
-      message: "Full attributes for {{ master }}: {{ states[master].attributes }}"
-      level: info
-  # Udtræk og log JID'erne fra beolink.self
-  - service: system_log.write
-    data:
-      message: >
-        {%- set beolink_attr = states[master].attributes.beolink or {} -%}
-        {%- set self_attr = beolink_attr.self or {} -%}
-        {%- if self_attr %}
-          Extracted JID(s): {{ self_attr.values() | list }}
-        {%- else %}
-          No 'beolink.self' attribute found.
-        {%- endif %}
-      level: info
+      slaves: !input slave_devices
+      slave_jids: >
+        {%- set jids = [] -%}
+        {%- for slave in slaves -%}
+          {%- set beolink = state_attr(slave, 'beolink') or {} -%}
+          {%- set self_attr = beolink.self or {} -%}
+          {%- if self_attr -%}
+            {%- set jlist = self_attr.values() | list -%}
+            {%- if jlist|length > 0 -%}
+              {%- set _ = jids.append(jlist[0]) -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {{ jids }}
+  - service: bang_olufsen.beolink_expand
+    target:
+      entity_id: "{{ master }}"
+    data_template:
+      beolink_jids: "{{ slave_jids }}"
