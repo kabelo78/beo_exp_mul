@@ -42,5 +42,5 @@ action:
   - service: bang_olufsen.beolink_expand
     target:
       entity_id: "{{ master }}"
-    data_template:
+    data:
       beolink_jids: "{{ stored_jid }}"
