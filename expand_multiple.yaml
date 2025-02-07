@@ -2,7 +2,7 @@ blueprint:
   name: B&O Mozart – Expand + (Optional) Volume Sync (Auto JID fra attribut)
   description: >
     1) Automatisk udvid en B&O Mozart master-enhed ved at tilføje et eller flere
-       slave-enheder, når masteren når en valgt tilstand (f.eks. "playing").
+       slave-enheder, når masteren skifter til en valgt tilstand (f.eks. "playing").
        Slave-enhedernes JID hentes automatisk fra enhedens attribut "self".
     2) Hvis aktiveret, synkroniseres slave-enhedernes volumen med masterens.
     3) Yderligere betingelser kan tilføjes for at begrænse, hvornår automationen kører.
@@ -53,12 +53,12 @@ blueprint:
         condition: {}
 
 trigger:
-  # Trigger A: Udvid når masteren skifter til den valgte tilstand
+  # Trigger A: Udvid, når masteren skifter til den valgte tilstand
   - platform: state
     entity_id: !input master_device
     to: !input trigger_condition
     id: expand_trigger
-  # Trigger B: Volumen-sync når masterens volumen ændres (attribut: volume_level)
+  # Trigger B: Volumen-sync, når masterens volumen ændres (attribut: volume_level)
   - platform: state
     entity_id: !input master_device
     attribute: volume_level
@@ -68,19 +68,8 @@ variables:
   is_sync_volume: !input sync_volume
 
 action:
-  # Først beregnes slave-JIDs og gemmes i variablen computed_slave_jids.
-  - variables:
-      computed_slave_jids: >
-        {{ slave_devices
-           | map('state_attr', 'self')
-           | reject('equalto', None)
-           | map('values')
-           | map('list')
-           | map('first')
-           | list
-           | tojson }}
   - choose:
-      # Case 1: Expansion – hvis expand_trigger udløses og betingelser er opfyldt.
+      # Case 1: Expansion – hvis expand_trigger udløses og betingelser er opfyldt
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'expand_trigger' }}"
@@ -90,10 +79,16 @@ action:
           - service: bang_olufsen.beolink_expand
             target:
               entity_id: !input master_device
-            data:
-              # computed_slave_jids er en JSON-streng, der repræsenterer en liste af JIDs.
-              beolink_jids: "{{ computed_slave_jids }}"
-      # Case 2: Volumen-sync – hvis volume_sync_trigger udløses, sync_volume er true og betingelser er opfyldt.
+            data_template:
+              beolink_jids: >
+                {{ slave_devices
+                   | map('state_attr', 'self')
+                   | reject('equalto', None)
+                   | map('values')
+                   | map('list')
+                   | map('first')
+                   | list }}
+      # Case 2: Volumen-sync – hvis volume_sync_trigger udløses, sync_volume er true og betingelser er opfyldt
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'volume_sync_trigger' and is_sync_volume }}"
