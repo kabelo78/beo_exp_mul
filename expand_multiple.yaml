@@ -17,7 +17,8 @@ blueprint:
       name: Slave Devices
       description: >
         Vælg de slave-enheder, der skal inkluderes i masterens gruppe.
-        JID'erne hentes fra masterens 'peers'-attribut, baseret på hver slave-enheds 'friendly_name'.
+        Blueprintet udtrækker JID’erne fra masterens 'peers'-attribut,
+        baseret på hver slave-enheds 'friendly_name'.
       selector:
         entity:
           domain: media_player
@@ -35,30 +36,33 @@ trigger:
     entity_id: !input master_device
     to: !input trigger_state
 action:
-  # (Valgfrit) Log masterens peers for debugging
+  # Overfør blueprint-input til lokale variabler, så de kan bruges i templaten.
+  - variables:
+      master: !input master_device
+      slaves: !input slave_devices
+  # (Valgfrit) Log masterens peers for debugging.
   - service: system_log.write
     data:
-      message: >
-        Master peers: {{ state_attr(master_device, 'peers') }}
+      message: "Master peers: {{ state_attr(master, 'peers') }}"
       level: info
-  # (Valgfrit) Log de valgte slave-enheders friendly names for debugging
+  # (Valgfrit) Log de valgte slave-enheders friendly names for debugging.
   - service: system_log.write
     data:
       message: >
-        {%- for slave in slave_devices -%}
+        {%- for slave in slaves -%}
           Slave: {{ state_attr(slave, 'friendly_name') }}
         {%- endfor -%}
       level: info
-  # Udfør expand-handlingen – opbyg en liste med JIDs fra masterens peers baseret på slave-enhedernes friendly_name
+  # Kald expand-servicen med JID’erne udtrukket fra masterens peers, baseret på slave-enhedernes friendly_name.
   - service: bang_olufsen.beolink_expand
     target:
       entity_id: !input master_device
     data_template:
       beolink_jids: >
-        {%- set master_peers = state_attr(master_device, 'peers') -%}
+        {%- set master_peers = state_attr(master, 'peers') -%}
         {%- set jids = [] -%}
         {%- if master_peers -%}
-          {%- for slave in slave_devices -%}
+          {%- for slave in slaves -%}
             {%- set friendly = state_attr(slave, 'friendly_name') -%}
             {%- if friendly and friendly in master_peers -%}
               {%- set _ = jids.append(master_peers[friendly]) -%}
