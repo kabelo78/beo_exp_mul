@@ -1,9 +1,8 @@
 blueprint:
-  name: "B&O Mozart Expand med Slave Selection v2"
+  name: "B&O Mozart Expand med Slave Selection (Extract JID fra slave)"
   description: >
-    Denne automation expanderer en B&O Mozart master-enhed med de slave-enheder,
-    du vælger fra dropdown. For hver valgt slave udtrækkes JID'en automatisk fra dens
-    "beolink → self"-attribut, og masteren expanderes med den udtrukne liste af JID'er.
+    Denne automation expanderer en B&O Mozart master-enhed med de valgte slave-enheder.
+    JID'erne udtrækkes automatisk fra hver slave-enheds "beolink → self" attribut.
   domain: automation
   input:
     master_device:
@@ -16,8 +15,8 @@ blueprint:
     slave_devices:
       name: Slave-enheder
       description: >
-        Vælg en eller flere slave-enheder. Deres JID'er udtrækkes automatisk fra hver enheds
-        "beolink → self"-attribut.
+        Vælg de slave-enheder, som master skal expande til. JID'erne udtrækkes automatisk fra
+        hver enheds "beolink → self" attribut.
       selector:
         entity:
           domain: media_player
@@ -34,26 +33,30 @@ trigger:
     entity_id: !input master_device
     to: !input trigger_state
 action:
+  # Overfør blueprint-input til lokale variabler.
   - variables:
       master: !input master_device
       slaves: !input slave_devices
       slave_jids: >
         {%- set jids = [] -%}
         {%- for slave in slaves -%}
-          {%- set beolink = state_attr(slave, 'beolink') or {} -%}
-          {%- set self_attr = beolink.self or {} -%}
-          {%- if self_attr -%}
-            {%- set jlist = self_attr.values() | list -%}
-            {%- if jlist|length > 0 -%}
-              {%- set jids = jids + [ jlist[0] ] -%}
+          {%- set b = state_attr(slave, 'beolink') -%}
+          {%- if b is not none and b.self is defined -%}
+            {%- set s = b.self -%}
+            {%- if s is not none and s|length > 0 -%}
+              {%- set jlist = s.values() | list -%}
+              {%- set j = jlist[0] -%}
+              {%- set jids = jids + [ j ] -%}
             {%- endif -%}
           {%- endif -%}
         {%- endfor -%}
         {{ jids }}
+  # Log de udtrukne JID'er for debugging.
   - service: system_log.write
     data:
-      message: "Udtrukne JID'er: {{ slave_jids }}"
+      message: "Extracted Slave JIDs: {{ slave_jids }}"
       level: info
+  # Kald expand-servicen med master-enhedens entity_id og den udtrukne liste af JID'er.
   - service: bang_olufsen.beolink_expand
     target:
       entity_id: "{{ master }}"
