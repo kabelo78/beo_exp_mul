@@ -68,8 +68,19 @@ variables:
   is_sync_volume: !input sync_volume
 
 action:
+  # Først beregnes slave-JIDs og gemmes i variablen computed_slave_jids.
+  - variables:
+      computed_slave_jids: >
+        {{ slave_devices
+           | map('state_attr', 'self')
+           | reject('equalto', None)
+           | map('values')
+           | map('list')
+           | map('first')
+           | list
+           | tojson }}
   - choose:
-      # Case 1: Expansion – hvis expand_trigger udløses og betingelser er opfyldt
+      # Case 1: Expansion – hvis expand_trigger udløses og betingelser er opfyldt.
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'expand_trigger' }}"
@@ -80,11 +91,9 @@ action:
             target:
               entity_id: !input master_device
             data:
-              beolink_jids: >
-                {{ [ state_attr(entity, 'self').values() | list | first
-                     for entity in slave_devices
-                     if state_attr(entity, 'self') is not none ] }}
-      # Case 2: Volumen-sync – hvis volume_sync_trigger udløses, sync_volume er true og betingelser er opfyldt
+              # computed_slave_jids er en JSON-streng, der repræsenterer en liste af JIDs.
+              beolink_jids: "{{ computed_slave_jids }}"
+      # Case 2: Volumen-sync – hvis volume_sync_trigger udløses, sync_volume er true og betingelser er opfyldt.
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'volume_sync_trigger' and is_sync_volume }}"
