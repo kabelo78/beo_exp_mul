@@ -45,6 +45,6 @@ action:
         {% endif %}
   - service: bang_olufsen.beolink_expand
     target:
-      entity_id: !input master_device
-    data:
+      entity_id: !var master
+    data_template:
       beolink_jids: !var stored_jid
