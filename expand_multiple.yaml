@@ -2,13 +2,16 @@ blueprint:
   name: B&O Mozart Expand Simple
   description: >
     Når master-enheden skifter til en bestemt tilstand (f.eks. "playing"),
-    udtrækkes JID’en fra slave-enhedens 'self'-attribut, og masteren udvides
+    udtrækkes JID’en fra slave-enhedens 'self'-attribut, og masteren expander
     til at inkludere slave-enheden.
+
+    Bemærk: Du vælger slave-enheden med en almindelig entity-selector.
+    Du kan se den udtrukne JID under Developer Tools → States eller i systemloggen.
   domain: automation
   input:
     master_device:
       name: Master Device
-      description: "Vælg den B&O Mozart-enhed, der skal udvides."
+      description: "Vælg den B&O Mozart-enhed, der skal expanderes."
       selector:
         entity:
           domain: media_player
@@ -16,8 +19,8 @@ blueprint:
     slave_device:
       name: Slave Device
       description: >
-        Vælg den B&O Mozart-enhed, hvis JID (fundet under 'self') skal hentes og bruges
-        til udvidelse.
+        Vælg den B&O Mozart-enhed, hvis JID (fundet under 'self') skal hentes
+        og bruges til expansion.
       selector:
         entity:
           domain: media_player
@@ -25,7 +28,7 @@ blueprint:
     trigger_state:
       name: Trigger State
       description: >
-        Den tilstand, som master-enheden skal skifte til for at udløse udvidelsen.
+        Den tilstand, som master-enheden skal skifte til for at udløse expansionen.
       default: "playing"
       selector:
         text:
@@ -34,6 +37,17 @@ trigger:
     entity_id: !input master_device
     to: !input trigger_state
 action:
+  # (Valgfrit) Log den udtrukne JID til systemloggen for at kunne se, hvad der vælges.
+  - service: system_log.write
+    data:
+      message: >
+        {% set attr = state_attr(slave_device, 'self') %}
+        {% if attr %}
+          Slave device JID: {{ attr.values() | list }}
+        {% else %}
+          Slave device har ingen 'self'-attribut.
+        {% endif %}
+      level: info
   - service: bang_olufsen.beolink_expand
     target:
       entity_id: !input master_device
