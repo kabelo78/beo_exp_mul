@@ -1,12 +1,10 @@
 blueprint:
-  name: B&O Mozart Expand Simple
+  name: B&O Mozart Expand - Vælg Peer JIDs
   description: >
-    Når master-enheden skifter til en bestemt tilstand (f.eks. "playing"),
-    udtrækkes JID’en fra slave-enhedens 'self'-attribut, og masteren expander
-    til at inkludere slave-enheden.
-
-    Bemærk: Du vælger slave-enheden med en almindelig entity-selector.
-    Du kan se den udtrukne JID under Developer Tools → States eller i systemloggen.
+    Denne automation udvider en B&O Mozart master-enhed med de JIDs,
+    du vælger manuelt. Masteren viser en liste af peers (JIDs) under dens 'peers'-attribut.
+    Da Home Assistants blueprint-system ikke understøtter dynamisk genererede dropdowns,
+    skal du kopiere den ønskede JID manuelt.
   domain: automation
   input:
     master_device:
@@ -16,46 +14,21 @@ blueprint:
         entity:
           domain: media_player
           integration: bang_olufsen
-    slave_device:
-      name: Slave Device
+    peer_jids:
+      name: Peer JIDs
       description: >
-        Vælg den B&O Mozart-enhed, hvis JID (fundet under 'self') skal hentes
-        og bruges til expansion.
-      selector:
-        entity:
-          domain: media_player
-          integration: bang_olufsen
-    trigger_state:
-      name: Trigger State
-      description: >
-        Den tilstand, som master-enheden skal skifte til for at udløse expansionen.
-      default: "playing"
+        Angiv de JIDs, der skal tilføjes til masteren. Disse JIDs findes under masterens
+        'peers'-attribut. Kopiér den ønskede JID (eller flere) manuelt.
       selector:
         text:
+          multiple: true
 trigger:
   - platform: state
     entity_id: !input master_device
-    to: !input trigger_state
+    to: "playing"
 action:
-  # (Valgfrit) Log den udtrukne JID til systemloggen for at kunne se, hvad der vælges.
-  - service: system_log.write
-    data:
-      message: >
-        {% set attr = state_attr(slave_device, 'self') %}
-        {% if attr %}
-          Slave device JID: {{ attr.values() | list }}
-        {% else %}
-          Slave device har ingen 'self'-attribut.
-        {% endif %}
-      level: info
   - service: bang_olufsen.beolink_expand
     target:
       entity_id: !input master_device
-    data_template:
-      beolink_jids: >
-        {% set attr = state_attr(slave_device, 'self') %}
-        {% if attr %}
-          {{ attr.values() | list }}
-        {% else %}
-          []
-        {% endif %}
+    data:
+      beolink_jids: !input peer_jids
