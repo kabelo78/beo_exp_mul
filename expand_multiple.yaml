@@ -16,8 +16,8 @@ blueprint:
     slave_devices:
       name: Slave-enheder
       description: >
-        Vælg en eller flere slave-enheder. Blueprintet matcher hver slave's "friendly_name" med en nøgle
-        i masterens "peers"-attribut for at udtrække den tilhørende JID.
+        Vælg en eller flere slave-enheder. Blueprintet matcher hver slaves "friendly_name"
+        med en nøgle i masterens "peers"-attribut for at udtrække den tilhørende JID.
       selector:
         entity:
           domain: media_player
@@ -35,16 +35,16 @@ trigger:
     entity_id: !input master_device
     to: !input trigger_state
 action:
-  # Overfør blueprint-input til lokale variabler
+  # Overfør input til lokale variabler, så de er tilgængelige i templaten.
   - variables:
       master: !input master_device
       slaves: !input slave_devices
-  # (Valgfrit) Log masterens peers-attribut for debugging
+  # (Valgfrit) Log masterens peers-attribut for debugging.
   - service: system_log.write
     data:
       message: "Master peers: {{ state_attr(master, 'peers') }}"
       level: info
-  # (Valgfrit) Log de valgte slave-enheders friendly_name for debugging
+  # (Valgfrit) Log de valgte slave-enheders friendly_name for debugging.
   - service: system_log.write
     data:
       message: >
@@ -52,7 +52,7 @@ action:
           Slave: {{ state_attr(slave, 'friendly_name') }}; 
         {%- endfor -%}
       level: info
-  # Udtræk JID'erne fra masterens peers-attribut baseret på slave-enhedernes friendly_name
+  # Udtræk JID'erne fra masterens peers-attribut baseret på de valgte slave-enheder.
   - variables:
       stored_jids: >
         {%- set master_peers = state_attr(master, 'peers') or {} -%}
@@ -64,12 +64,12 @@ action:
           {%- endif -%}
         {%- endfor -%}
         {{ jids }}
-  # Log de udtrukne JID'er for debugging
+  # Log de udtrukne JID'er for debugging.
   - service: system_log.write
     data:
       message: "Udtrukne JID'er: {{ stored_jids }}"
       level: info
-  # Kald expand-servicen med den udtrukne liste af JID'er
+  # Kald expand-servicen med master-enhedens entity_id og den udtrukne liste af JID'er.
   - service: bang_olufsen.beolink_expand
     target:
       entity_id: "{{ master }}"
