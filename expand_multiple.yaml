@@ -2,7 +2,7 @@ blueprint:
   name: B&O Mozart Expand med Slave Peer Selection
   description: >
     Denne automation expanderer en B&O Mozart master-enhed ved at inkludere de valgte slave-enheder.
-    Blueprintet udtrækker automatisk JID'erne for de valgte slave-enheder fra masterens "peers"-attribut
+    Blueprintet udtrækker automatisk JID'erne for de valgte slave-enheder fra masterens "peers"-attribut,
     ved at matche slave-enhedernes "friendly_name" med nøglerne i "peers".
   domain: automation
   input:
@@ -35,7 +35,7 @@ trigger:
     entity_id: !input master_device
     to: !input trigger_state
 action:
-  # Overfør input til lokale variabler, så de er tilgængelige i templaten.
+  # Overfør blueprint-input til lokale variabler.
   - variables:
       master: !input master_device
       slaves: !input slave_devices
