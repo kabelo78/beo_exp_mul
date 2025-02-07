@@ -2,8 +2,8 @@ blueprint:
   name: "B&O Mozart Expand med Slave Selection"
   description: >
     Denne automation expanderer en B&O Mozart master-enhed med de slave-enheder,
-    du vælger fra dropdown. For hver valgt slave udtrækkes JID'en automatisk fra
-    dens "beolink → self"‑attribut, og masteren expanderes med den udtrukne liste af JID'er.
+    du vælger fra dropdown. For hver valgt slave udtrækkes JID'en automatisk fra dens
+    "beolink → self"-attribut, og masteren expanderes med den udtrukne liste af JID'er.
   domain: automation
   input:
     master_device:
@@ -16,8 +16,8 @@ blueprint:
     slave_devices:
       name: Slave-enheder
       description: >
-        Vælg en eller flere slave-enheder. Deres JID'er udtrækkes automatisk fra
-        hver enheds "beolink → self"-attribut.
+        Vælg en eller flere slave-enheder. Deres JID'er udtrækkes automatisk fra hver enheds
+        "beolink → self"-attribut.
       selector:
         entity:
           domain: media_player
@@ -45,11 +45,15 @@ action:
           {%- if self_attr -%}
             {%- set jlist = self_attr.values() | list -%}
             {%- if jlist|length > 0 -%}
-              {%- set _ = jids.append(jlist[0]) -%}
+              {%- set jids = jids + [ jlist[0] ] -%}
             {%- endif -%}
           {%- endif -%}
         {%- endfor -%}
         {{ jids }}
+  - service: system_log.write
+    data:
+      message: "Udtrukne JID'er: {{ slave_jids }}"
+      level: info
   - service: bang_olufsen.beolink_expand
     target:
       entity_id: "{{ master }}"
