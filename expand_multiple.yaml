@@ -77,15 +77,15 @@ action:
            | map('state_attr', 'self')
            | reject('none')
            | map('values')
-           | list
-           | flatten }}
+           | map('first')
+           | list }}
   # (Valgfrit:) Log den beregnede liste til debugging.
   - service: system_log.write
     data:
       message: "Computed slave JIDs: {{ computed_slave_jids }}"
       level: info
   - choose:
-      # Case 1: Expansion – hvis triggeren er expand_trigger og eventuelle yderligere betingelser er opfyldt.
+      # Case 1: Expansion – hvis triggeren er expand_trigger og betingelser er opfyldt.
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'expand_trigger' }}"
@@ -96,8 +96,7 @@ action:
             target:
               entity_id: !input master_device
             data_template:
-              beolink_jids: >
-                {{ computed_slave_jids }}
+              beolink_jids: "{{ computed_slave_jids }}"
       # Case 2: Volumen-sync – hvis triggeren er volume_sync_trigger, sync_volume er true, og betingelser er opfyldt.
       - conditions:
           - condition: template
