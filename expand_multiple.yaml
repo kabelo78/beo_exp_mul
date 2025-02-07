@@ -1,5 +1,5 @@
 blueprint:
-  name: "B&O Mozart Expand med Slave Selection"
+  name: "B&O Mozart Expand med Slave Selection v2"
   description: >
     Denne automation expanderer en B&O Mozart master-enhed med de slave-enheder,
     du vælger fra dropdown. For hver valgt slave udtrækkes JID'en automatisk fra dens
