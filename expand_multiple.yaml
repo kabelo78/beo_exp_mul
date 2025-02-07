@@ -1,10 +1,10 @@
 blueprint:
-  name: B&O Mozart – Expand + (Optional) Volume Sync (Auto JID)
+  name: B&O Mozart – Expand + (Optional) Volume Sync (Auto JID fra attribut)
   description: >
     1) Automatisk udvid en B&O Mozart master-enhed ved at tilføje et eller flere
        slave-enheder, når masteren når en valgt tilstand (f.eks. "playing").
-       Slave-enhedernes JID hentes automatisk fra enhedens attributter.
-    2) Hvis aktiveret, synkroniseres slave-enhedernes volumen til masterens.
+       Slave-enhedernes JID hentes automatisk fra enhedens attribut "self".
+    2) Hvis aktiveret, synkroniseres slave-enhedernes volumen med masterens.
     3) Yderligere betingelser kan tilføjes for at begrænse, hvornår automationen kører.
   domain: automation
   input:
@@ -19,8 +19,8 @@ blueprint:
       name: Slave Devices
       description: >
         De B&O Mozart-højttalere, der skal tilføjes til masterens gruppe.
-        JID for hver enhed hentes automatisk fra enhedens attributter.
-        Disse enheder kan også få synkroniseret volumen til masteren.
+        JID for hver enhed hentes automatisk fra enhedens attribut "self".
+        Disse enheder kan også få synkroniseret volumen med masteren.
       selector:
         entity:
           integration: bang_olufsen
@@ -29,8 +29,8 @@ blueprint:
     trigger_condition:
       name: Trigger Condition
       description: >
-        Den tilstand, som masteren skal indstilles til (f.eks. "playing" eller "on")
-        for at udvidelsen skal ske.
+        Den tilstand, som masteren skal skifte til (f.eks. "playing" eller "on")
+        for at udløse udvidelsen.
       selector:
         select:
           options:
@@ -48,7 +48,6 @@ blueprint:
       name: Additional Conditions
       description: >
         Valgfri betingelser, der skal være opfyldt, før automationen udføres.
-        Fx kan du begrænse kørsel til bestemte tidsrum eller baseret på andre sensorer.
       default: []
       selector:
         condition: {}
@@ -70,7 +69,7 @@ variables:
 
 action:
   - choose:
-      # Case 1: Expansion – hvis trigger er expand_trigger og betingelser er opfyldt
+      # Case 1: Expansion – hvis expand_trigger udløses og betingelser er opfyldt
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'expand_trigger' }}"
@@ -81,9 +80,11 @@ action:
             target:
               entity_id: !input master_device
             data:
-              # Henter JID for hver slave-enhed (hvis attributten hedder 'jid')
-              beolink_jids: "{{ slave_devices | map('state_attr', 'jid') | reject('none') | list }}"
-      # Case 2: Volumen-sync – hvis trigger er volume_sync_trigger, sync_volume er true og betingelser er opfyldt
+              beolink_jids: >
+                {{ [ state_attr(entity, 'self').values() | list | first
+                     for entity in slave_devices
+                     if state_attr(entity, 'self') is not none ] }}
+      # Case 2: Volumen-sync – hvis volume_sync_trigger udløses, sync_volume er true og betingelser er opfyldt
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'volume_sync_trigger' and is_sync_volume }}"
