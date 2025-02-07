@@ -22,7 +22,7 @@ blueprint:
         JID for hver enhed hentes automatisk fra enhedens attribut "self".
         (Bemærk: attributten skal være struktureret som et dictionary, fx:
          self:
-           BeoSound Balance: 6470.1200494.33004699@products.bang-olufsen.com)
+           BeoSound Balance: "6470.1200494.33004699@products.bang-olufsen.com")
       selector:
         entity:
           integration: bang_olufsen
@@ -55,7 +55,7 @@ blueprint:
         condition: {}
 
 trigger:
-  # Trigger A: Udvid, når masteren skifter til den valgte tilstand
+  # Trigger A: Udvid, når masteren skifter til den valgte tilstand (fx "playing")
   - platform: state
     entity_id: !input master_device
     to: !input trigger_condition
@@ -70,22 +70,8 @@ variables:
   is_sync_volume: !input sync_volume
 
 action:
-  # Først beregnes slave-JIDs ud fra attributten "self".
-  - variables:
-      computed_slave_jids: >
-        {{ slave_devices
-           | map('state_attr', 'self')
-           | reject('none')
-           | map('values')
-           | map('first')
-           | list }}
-  # (Valgfrit:) Log den beregnede liste til debugging.
-  - service: system_log.write
-    data:
-      message: "Computed slave JIDs: {{ computed_slave_jids }}"
-      level: info
   - choose:
-      # Case 1: Expansion – hvis triggeren er expand_trigger og eventuelle yderligere betingelser er opfyldt.
+      # Case 1: Expansion – når expand_trigger udløses og eventuelle betingelser er opfyldt.
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'expand_trigger' }}"
@@ -96,8 +82,18 @@ action:
             target:
               entity_id: !input master_device
             data_template:
-              beolink_jids: "{{ computed_slave_jids }}"
-      # Case 2: Volumen-sync – hvis triggeren er volume_sync_trigger, sync_volume er true, og betingelser er opfyldt.
+              beolink_jids: >
+                {%- set jids = [] -%}
+                {%- for entity in slave_devices -%}
+                  {%- set self_attr = state_attr(entity, 'self') -%}
+                  {%- if self_attr -%}
+                    {%- for key, value in self_attr.items() -%}
+                      {%- set _ = jids.append(value) -%}
+                    {%- endfor -%}
+                  {%- endif -%}
+                {%- endfor -%}
+                {{ jids }}
+      # Case 2: Volume Sync – når volume_sync_trigger udløses, sync_volume er sand, og betingelserne er opfyldt.
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'volume_sync_trigger' and is_sync_volume }}"
