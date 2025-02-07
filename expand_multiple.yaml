@@ -5,7 +5,7 @@ blueprint:
        når masteren skifter til en valgt tilstand (f.eks. "playing"). Slave-enhedernes JID hentes
        automatisk fra enhedens attribut "self".
     2) Hvis aktiveret, synkroniseres slave-enhedernes volumen med masterens.
-    3) Yderligere betingelser kan tilføjes for at begrænse, hvornår automationen kører.
+    3) Yderligere betingelser kan tilføjes for at begrænse, hvornår automationen udføres.
   domain: automation
   input:
     master_device:
@@ -85,7 +85,7 @@ action:
       message: "Computed slave JIDs: {{ computed_slave_jids }}"
       level: info
   - choose:
-      # Case 1: Expansion – hvis triggeren er expand_trigger og betingelser er opfyldt.
+      # Case 1: Expansion – hvis triggeren er expand_trigger og eventuelle yderligere betingelser er opfyldt.
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'expand_trigger' }}"
