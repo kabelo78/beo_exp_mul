@@ -1,5 +1,5 @@
 blueprint:
-  name: B&O Mozart Expand – Gem JID i variabel
+  name: B&O Mozart Expand – Gem JID i variabel med log
   description: >
     Når master-enheden skifter til en bestemt tilstand (f.eks. "playing"),
     udtrækkes JID'en fra slave-enhedens 'self'-attribut og gemmes i en variabel.
@@ -33,14 +33,25 @@ trigger:
     entity_id: !input master_device
     to: !input trigger_state
 action:
+  # Overfør input til lokale variabler.
   - variables:
       master: !input master_device
       slave: !input slave_device
       stored_jid: >
         {% set self_attr = state_attr(slave, 'self') %}
-        {% if self_attr %}{{ self_attr.values() | list }}{% else %}[]{% endif %}
+        {% if self_attr %}
+          {{ self_attr.values() | list }}
+        {% else %}
+          []
+        {% endif %}
+  # (Valgfrit) Log den udtrukne JID til systemloggen.
+  - service: system_log.write
+    data:
+      message: "Extracted slave JID: {{ stored_jid }}"
+      level: info
+  # Kald expand-servicen med master-enhedens entity_id og den udtrukne JID.
   - service: bang_olufsen.beolink_expand
     target:
-      entity_id: "{{ master }}"
+      entity_id: !input master_device
     data:
-      beolink_jids: "{{ stored_jid }}"
+      beolink_jids: !var stored_jid
