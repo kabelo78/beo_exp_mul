@@ -1,8 +1,8 @@
 blueprint:
-  name: "B&O Mozart Expand med Slave Selection (Extract JID fra slave)"
+  name: "B&O Mozart Expand med Slave Selection (Extract JID fra Slave) v2"
   description: >
-    Denne automation expanderer en B&O Mozart master-enhed med de valgte slave-enheder.
-    JID'erne udtrækkes automatisk fra hver slave-enheds "beolink → self" attribut.
+    Denne automation udtrækker automatisk JID'en fra de valgte slave-enheder via deres
+    "beolink → self" attribut og expanderer master-enheden med den udtrukne liste af JID'er.
   domain: automation
   input:
     master_device:
@@ -15,8 +15,8 @@ blueprint:
     slave_devices:
       name: Slave-enheder
       description: >
-        Vælg de slave-enheder, som master skal expande til. JID'erne udtrækkes automatisk fra
-        hver enheds "beolink → self" attribut.
+        Vælg de slave-enheder, der skal inkluderes i masterens gruppe.
+        JID'erne udtrækkes automatisk fra hver enheds "beolink → self" attribut.
       selector:
         entity:
           domain: media_player
@@ -40,17 +40,25 @@ action:
       slave_jids: >
         {%- set jids = [] -%}
         {%- for slave in slaves -%}
-          {%- set b = state_attr(slave, 'beolink') -%}
-          {%- if b is not none and b.self is defined -%}
-            {%- set s = b.self -%}
-            {%- if s is not none and s|length > 0 -%}
-              {%- set jlist = s.values() | list -%}
-              {%- set j = jlist[0] -%}
-              {%- set jids = jids + [ j ] -%}
-            {%- endif -%}
+          {%- set attrs = states[slave].attributes -%}
+          {%- set beolink = attrs.beolink if attrs.beolink is defined else {} -%}
+          {%- set s = beolink.self if beolink.self is defined else {} -%}
+          {%- if s and s|length > 0 -%}
+            {%- set jlist = s.values() | list -%}
+            {%- set j = jlist[0] -%}
+            {%- set jids = jids + [ j ] -%}
           {%- endif -%}
         {%- endfor -%}
         {{ jids }}
+  # Log alle slave-enhedernes attributter for debugging.
+  - service: system_log.write
+    data:
+      message: >
+        Slave devices attributes:
+        {%- for slave in slaves -%}
+          {{ slave }}: {{ states[slave].attributes | tojson }}
+        {%- endfor -%}
+      level: info
   # Log de udtrukne JID'er for debugging.
   - service: system_log.write
     data:
