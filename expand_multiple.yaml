@@ -1,8 +1,9 @@
 blueprint:
-  name: "B&O Mozart Expand med Slave Selection (Extract JID fra Slave) v2"
+  name: "B&O Mozart Expand + (Optional) Volume Sync (Manuel Slave JID)"
   description: >
-    Denne automation udtrækker automatisk JID'en fra de valgte slave-enheder via deres
-    "beolink → self" attribut og expanderer master-enheden med den udtrukne liste af JID'er.
+    Denne automation expanderer en B&O Mozart master-enhed ved at tilføje en slave‑enhed,
+    hvis JID indtastes manuelt. Derudover kan du vælge at aktivere volume‑synkronisering,
+    så slave‑enhedens volume matches med masterens, når masterens volume ændres.
   domain: automation
   input:
     master_device:
@@ -12,19 +13,35 @@ blueprint:
         entity:
           domain: media_player
           integration: bang_olufsen
-    slave_devices:
-      name: Slave-enheder
+    slave_jid:
+      name: Slave JID
       description: >
-        Vælg de slave-enheder, der skal inkluderes i masterens gruppe.
-        JID'erne udtrækkes automatisk fra hver enheds "beolink → self" attribut.
+        Indtast JID for den slave-enhed, der skal tilføjes til masterens gruppe.
+        Fx: 1111.2222222.33333333@products.bang-olufsen.com
+      selector:
+        text:
+    sync_volume:
+      name: "Synkroniser Volume?"
+      description: >
+        Hvis sandt, synkroniseres slave-enhedens volume med masterens,
+        når masterens volume ændres.
+      default: false
+      selector:
+        boolean:
+    slave_device:
+      name: "Slave-enhed (Volume Sync)"
+      description: >
+        Vælg den slave-enhed, hvis volume skal synkroniseres med masterens.
+        (Dette felt er kun relevant, hvis "Synkroniser Volume?" er aktiveret.)
+      required: false
       selector:
         entity:
           domain: media_player
           integration: bang_olufsen
-          multiple: true
     trigger_state:
-      name: Trigger-tilstand
-      description: "Den tilstand, som master-enheden skal skifte til for at udløse expand."
+      name: "Trigger-tilstand"
+      description: >
+        Den tilstand, som master-enheden skal skifte til for at udløse expand-handlingen.
       default: "playing"
       selector:
         text:
@@ -32,41 +49,32 @@ trigger:
   - platform: state
     entity_id: !input master_device
     to: !input trigger_state
+    id: expand_trigger
+  - platform: state
+    entity_id: !input master_device
+    attribute: volume_level
+    id: volume_sync_trigger
 action:
-  # Overfør blueprint-input til lokale variabler.
-  - variables:
-      master: !input master_device
-      slaves: !input slave_devices
-      slave_jids: >
-        {%- set jids = [] -%}
-        {%- for slave in slaves -%}
-          {%- set attrs = states[slave].attributes -%}
-          {%- set beolink = attrs.beolink if attrs.beolink is defined else {} -%}
-          {%- set s = beolink.self if beolink.self is defined else {} -%}
-          {%- if s and s|length > 0 -%}
-            {%- set jlist = s.values() | list -%}
-            {%- set j = jlist[0] -%}
-            {%- set jids = jids + [ j ] -%}
-          {%- endif -%}
-        {%- endfor -%}
-        {{ jids }}
-  # Log alle slave-enhedernes attributter for debugging.
-  - service: system_log.write
-    data:
-      message: >
-        Slave devices attributes:
-        {%- for slave in slaves -%}
-          {{ slave }}: {{ states[slave].attributes | tojson }}
-        {%- endfor -%}
-      level: info
-  # Log de udtrukne JID'er for debugging.
-  - service: system_log.write
-    data:
-      message: "Extracted Slave JIDs: {{ slave_jids }}"
-      level: info
-  # Kald expand-servicen med master-enhedens entity_id og den udtrukne liste af JID'er.
-  - service: bang_olufsen.beolink_expand
-    target:
-      entity_id: "{{ master }}"
-    data_template:
-      beolink_jids: "{{ slave_jids }}"
+  - choose:
+      # Case 1: Expansion – når master skifter til den angivne tilstand
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'expand_trigger' }}"
+        sequence:
+          - service: bang_olufsen.beolink_expand
+            target:
+              entity_id: !input master_device
+            data:
+              beolink_jids:
+                - !input slave_jid
+      # Case 2: Volume Sync – når masterens volume ændres, og synkronisering er aktiveret
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'volume_sync_trigger' and sync_volume }}"
+        sequence:
+          - service: media_player.volume_set
+            target:
+              entity_id: !input slave_device
+            data:
+              volume_level: "{{ trigger.to_state.attributes.volume_level }}"
+    default: []
