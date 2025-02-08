@@ -38,6 +38,7 @@ blueprint:
         Vælg den slave-enhed, hvis volume skal synkroniseres med masterens.
         Dette felt anvendes kun, hvis "Synkroniser Volume?" er aktiveret.
       selector:
+        multiple: true
         entity:
           domain: media_player
           integration: bang_olufsen
