@@ -32,7 +32,7 @@ blueprint:
       name: "Slave-enhed (Volume Sync)"
       description: >
         Vælg den slave-enhed, hvis volume skal synkroniseres med masterens.
-        (Dette felt er kun relevant, hvis "Synkroniser Volume?" er aktiveret.)
+        Dette felt bruges kun, hvis "Synkroniser Volume?" er aktiveret.
       selector:
         entity:
           domain: media_player
@@ -55,7 +55,7 @@ trigger:
     id: volume_sync_trigger
 action:
   - choose:
-      # Case 1: Expansion – når master skifter til den angivne tilstand
+      # Case 1: Expansion – når master-enheden skifter til trigger_state (fx "playing")
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'expand_trigger' }}"
