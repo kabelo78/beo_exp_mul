@@ -1,30 +1,33 @@
 blueprint:
-  name: "B&O Mozart Expand + (Optional) Volume Sync + Additional Conditions)"
+  name: "B&O Mozart Expand + (Optional) Volume Sync (Manual Slave JIDs + Additional Conditions)"
   description: >
-    Denne automation expanderer en B&O Mozart master-enhed ved at tilføje en slave‑enhed,
-    hvis JID indtastes manuelt. Derudover kan du vælge at aktivere volume‑synkronisering,
-    så slave‑enhedens volume matches med masterens, når masterens volume ændres.
-    Yderligere betingelser (fx tidsbetingelser, andre enhedsbetingelser) kan også angives.
+    Denne automation expanderer en B&O Mozart master-enhed ved at tilføje de slave-enheder,
+    hvis JID'er indtastes manuelt. Du kan indtaste flere slave‑JID'er.
+    Derudover kan du vælge at aktivere volume‑synkronisering, så slave‑enhedens volume matches med masterens,
+    når masterens volume ændres. Yderligere betingelser (fx tidsbetingelser, andre enhedsbetingelser) kan også angives.
   domain: automation
   input:
     master_device:
-      name: Master-enhed
+      name: "Master-enhed"
       description: "Vælg den B&O Mozart master-enhed, der skal expanderes."
       selector:
         entity:
           domain: media_player
           integration: bang_olufsen
-    slave_jid:
-      name: "Slave JID"
+    slave_jids:
+      name: "Slave JIDs"
       description: >
-        Indtast JID for den slave-enhed, der skal tilføjes til masterens gruppe.
-        Fx: 1111.2222222.33333333@products.bang-olufsen.com
+        Indtast JID'er for de slave-enheder, der skal tilføjes til masterens gruppe.
+        Fx:
+          - 1111.2222222.33333333@products.bang-olufsen.com
+          - 4444.5555555.66666666@products.bang-olufsen.com
       selector:
         text:
+          multiple: true
     sync_volume:
       name: "Synkroniser Volume?"
       description: >
-        Hvis sandt, synkroniseres slave-enhedens volume med masterens,
+        Hvis sandt, synkroniseres volume for den/de valgte slave-enheder med masterens,
         når masterens volume ændres.
       default: false
       selector:
@@ -48,7 +51,7 @@ blueprint:
     conditions:
       name: "Yderligere betingelser"
       description: >
-        Valgfri ekstra betingelser, som skal være opfyldt, før automationen kører.
+        Valgfri ekstra betingelser, der skal være opfyldt, før automationen kører.
         Du kan fx tilføje tidsbetingelser, betingelser for andre enheder osv.
       default: []
       selector:
@@ -64,7 +67,7 @@ trigger:
     id: volume_sync_trigger
 action:
   - choose:
-      # Case 1: Expand
+      # Case 1: Expansion – når master skifter til trigger_state (fx "playing")
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'expand_trigger' }}"
@@ -75,9 +78,8 @@ action:
             target:
               entity_id: !input master_device
             data:
-              beolink_jids:
-                - !input slave_jid
-      # Case 2: Volume Sync
+              beolink_jids: !input slave_jids
+      # Case 2: Volume Sync – når masterens volume ændres, og synkronisering er aktiveret
       - conditions:
           - condition: template
             value_template: "{{ trigger.id == 'volume_sync_trigger' and sync_volume }}"
